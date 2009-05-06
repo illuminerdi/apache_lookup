@@ -5,3 +5,4 @@ Rakefile
 bin/apache_lookup
 lib/apache_lookup.rb
 test/test_apache_lookup.rb
+test/my_logs.log
