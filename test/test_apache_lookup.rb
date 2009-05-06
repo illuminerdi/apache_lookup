@@ -14,7 +14,7 @@ class TestApacheLookup < Test::Unit::TestCase
     # should delete the cache log if it exists to not clobber future tests.
     File.delete("#{@dir}/lookup_cache.log") if File.exists?("#{@dir}/lookup_cache.log")
   end
-  
+
   def teardown
     File.delete("#{@dir}/test_my_logs.log") if File.exists?("#{@dir}/test_my_logs.log")
     File.delete("#{@dir}/test_my_logs.log.orig") if File.exists?("#{@dir}/test_my_logs.log.orig")
@@ -25,7 +25,7 @@ class TestApacheLookup < Test::Unit::TestCase
       ApacheLookup.new()
     end
   end
-  
+
   def test_loads_log_file
     flunk "must make sure it is able to read in the file"
   end
