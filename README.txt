@@ -31,7 +31,7 @@ A command line tool for changing an Apache log so that IP Addresses are replaced
 
 == INSTALL:
 
-* sudo gem install illuminerdi-apache_lookup --source http://github.com/illuminerdi...
+* grab source and DIY! :P (not ready for rubygemage)
 
 == LICENSE:
 
