@@ -4,6 +4,7 @@ require 'optparse'
 require 'resolv'
 require 'fileutils'
 require 'time'
+require 'thread'
 
 class ApacheLookup
   VERSION = '0.0.1'
@@ -43,7 +44,11 @@ class ApacheLookup
     log_bits = log_line.split(" - - ")
     dns = get_cache(log_bits[0].strip)
     if !dns
-      dns = Resolv.getname(log_bits[0].strip)
+      begin
+        dns = Resolv.getname(log_bits[0].strip)
+      rescue Resolv::ResolvError
+        dns = log_bits[0]
+      end
       FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
       cf = File.open(CACHE_FILE, "r+")
       to_write = "#{log_bits[0].strip}|#{dns}|#{Time.now}"
@@ -55,9 +60,29 @@ class ApacheLookup
   end
 
   def resolve
-    @log_data.map!{|line| 
-      lookup(line)
-    }
+    queue = Queue.new
+    resolved = []
+    while !@log_data.empty?
+      while queue.size <= @options[:threads]
+        Thread.new do
+          queue << lookup(@log_data.shift)
+        end
+      end
+      consumer = Thread.new do
+        queue.size.times do |i|
+          resolved << queue.pop
+        end
+      end
+      consumer.join
+    end
+    @log_data = resolved
+    #resolved = []
+    #threads = []
+    #@log_data.each{|line| 
+    #  threads << Thread.new{resolved << lookup(line)}
+    #}
+    #threads.each {|t| t.join}
+    #@log_data = resolved
   end
 
   def write

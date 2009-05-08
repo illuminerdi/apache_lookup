@@ -91,6 +91,9 @@ class TestApacheLookup < Test::Unit::TestCase
     resolved = File.readlines("#{@dir}/test_my_logs.log").map{|line| line.chomp}
     (0...orig.size).each do |i|
       actual = orig[i].split(" - - ")
+      if resolved[i].nil?
+        raise resolved.size.inspect
+      end
       expected = resolved[i].split(" - - ")
       assert_equal orig[i].split(" - - ")[1], resolved[i].split(" - - ")[1]
     end
