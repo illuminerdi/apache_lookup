@@ -83,7 +83,7 @@ class TestApacheLookup < Test::Unit::TestCase
 
   def test_log_order_is_maintained
     #flunk "make sure that the order (the date/time stamp) is still in ascending order, or maybe test to make sure it still matches what's in the original file"
-    al = ApacheLookup.new(["#{@dir}/test_my_logs.log"])
+    al = ApacheLookup.new(["-t","2","#{@dir}/test_my_logs.log"])
     flexmock(Resolv).should_receive(:getname => "www.foo.com")
     al.resolve
     al.write

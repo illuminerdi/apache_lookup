@@ -31,13 +31,15 @@ class ApacheLookup
         exit 0
       end
     end.parse!(args)
+    @log_data = Queue.new
     load_log args.shift
   end
 
   def load_log file=""
     raise ApacheLookupError, "No log file supplied" if(file.nil? or file == "")
     @orig_file = file
-    @log_data = File.readlines(file).map {|line| line.chomp}
+    f = File.new(file)
+    f.each {|line| @log_data << {:line => line.chomp, :num => f.lineno-1}}
   end
 
   def lookup log_line=""
@@ -52,6 +54,7 @@ class ApacheLookup
       FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
       cf = File.open(CACHE_FILE, "r+")
       to_write = "#{log_bits[0].strip}|#{dns}|#{Time.now}"
+      cf.readlines
       cf.puts(to_write)
       cf.close
     end
@@ -60,29 +63,33 @@ class ApacheLookup
   end
 
   def resolve
-    queue = Queue.new
+    consumers = []
     resolved = []
-    while !@log_data.empty?
-      while queue.size <= @options[:threads]
-        Thread.new do
-          queue << lookup(@log_data.shift)
+    @options[:threads].times do |thread|
+      consumers << Thread.new do
+        while(!@log_data.empty?)
+          data = @log_data.shift
+          resolved << {:num => data[:num], :line => lookup(data[:line])}
         end
       end
-      consumer = Thread.new do
-        queue.size.times do |i|
-          resolved << queue.pop
-        end
-      end
-      consumer.join
     end
+    
+    consumers.each{|c| c.join}
     @log_data = resolved
+  end
+  
+  def resolve_old
+    @log_data.map!{|line|
+      lookup(line)
+    }
   end
 
   def write
     FileUtils.cp(@orig_file, "#{@orig_file}.orig")
+    @log_data.sort!{|a,b| a[:num].to_i <=> b[:num].to_i}
     File.open(@orig_file, "w") {|file|
-      @log_data.each {|line|
-        file.puts(line)
+      @log_data.each {|data|
+        file.puts(data[:line])
       }
     }
   end
@@ -109,5 +116,4 @@ class ApacheLookup
     found_and_current
   end
 end
-
 class ApacheLookupError < Exception; end
