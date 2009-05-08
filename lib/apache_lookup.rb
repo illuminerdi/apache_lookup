@@ -76,13 +76,6 @@ class ApacheLookup
       consumer.join
     end
     @log_data = resolved
-    #resolved = []
-    #threads = []
-    #@log_data.each{|line| 
-    #  threads << Thread.new{resolved << lookup(line)}
-    #}
-    #threads.each {|t| t.join}
-    #@log_data = resolved
   end
 
   def write
