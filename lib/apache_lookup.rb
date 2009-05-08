@@ -47,8 +47,10 @@ class ApacheLookup
     dns = get_cache(log_bits[0].strip)
     if !dns
       begin
-        dns = Resolv.getname(log_bits[0].strip)
-      rescue Resolv::ResolvError
+        timeout(2){
+          dns = Resolv.getname(log_bits[0].strip)
+        }
+      rescue Timeout::Error, Resolv::ResolvError
         dns = log_bits[0]
       end
       FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
@@ -67,13 +69,12 @@ class ApacheLookup
     resolved = []
     @options[:threads].times do |thread|
       consumers << Thread.new do
-        while(!@log_data.empty?)
+        until(@log_data.empty?)
           data = @log_data.shift
           resolved << {:num => data[:num], :line => lookup(data[:line])}
         end
       end
     end
-    
     consumers.each{|c| c.join}
     @log_data = resolved
   end
