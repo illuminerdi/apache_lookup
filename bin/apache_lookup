@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby -w
+
+$: << 'lib'
+ApacheLookup.run(ARGV)
