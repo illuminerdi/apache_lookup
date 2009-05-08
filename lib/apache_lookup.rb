@@ -42,8 +42,8 @@ class ApacheLookup
     f.each {|line| @log_data << {:line => line.chomp, :num => f.lineno-1}}
   end
 
-  def lookup log_line=""
-    log_bits = log_line.split(" - - ")
+  def lookup log_line={}
+    log_bits = log_line[:line].split(" - - ")
     dns = get_cache(log_bits[0].strip)
     if !dns
       begin
@@ -61,7 +61,7 @@ class ApacheLookup
       cf.close
     end
     log_bits[0] = "#{dns}"
-    log_bits.join(" - - ")
+    {:num => log_line[:num], :line => log_bits.join(" - - ")}
   end
 
   def resolve
@@ -70,8 +70,7 @@ class ApacheLookup
     @options[:threads].times do |thread|
       consumers << Thread.new do
         until(@log_data.empty?)
-          data = @log_data.shift
-          resolved << {:num => data[:num], :line => lookup(data[:line])}
+          resolved << lookup(@log_data.shift) #{:num => data[:num], :line => lookup(data[:line])}
         end
       end
     end

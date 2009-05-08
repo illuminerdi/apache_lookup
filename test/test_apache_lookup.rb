@@ -8,8 +8,8 @@ class TestApacheLookup < Test::Unit::TestCase
   def setup
     @dir = "#{FileUtils.pwd}/test"
     @cache = File.dirname(__FILE__) + "/../lib/lookup_cache.txt"
-    @log_line = '75.119.201.189 - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'
-    @mock_log_line = 'www.foo.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'
+    @log_line = {:num => 1, :line => '75.119.201.189 - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
+    @mock_log_line = {:num => 1, :line => 'www.foo.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     # should make a local my_logs.log to work with so future runs of tests don't get clobbered by the last run
     FileUtils.cp("#{@dir}/my_logs.log", "#{@dir}/test_my_logs.log")
 
@@ -56,7 +56,7 @@ class TestApacheLookup < Test::Unit::TestCase
     first = al.lookup(@log_line)
     alter_cache(ApacheLookup::CACHE_FILE, :dns, "75.119.201.189")
     second = al.lookup(@log_line)
-    expected = 'www.bar.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'
+    expected = {:num => 1, :line => 'www.bar.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     assert_equal expected, second
   end
 
