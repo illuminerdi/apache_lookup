@@ -89,7 +89,7 @@ class ApacheLookup
           if ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
             found_and_current = bits[1]
           else
-            @cache_data.reject!{|line| line[0] == bits[0]}
+            @cache_data.reject!{|line| line.split("|")[0] == bits[0]}
           end
         end
       end

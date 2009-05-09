@@ -13,6 +13,9 @@ class TestApacheLookup < Test::Unit::TestCase
     @mock_log_line = {:num => 1, :line => 'www.foo.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     # should make a local my_logs.log to work with so future runs of tests don't get clobbered by the last run
     FileUtils.cp("#{@dir}/my_logs.log", "#{@dir}/test_my_logs.log")
+    
+    #make sure our cache is empty
+    File.delete("#{@dir}/../lib/lookup_cache.txt") if File.exists?("#{@dir}/../lib/lookup_cache.txt")
   end
 
   def teardown
@@ -64,8 +67,11 @@ class TestApacheLookup < Test::Unit::TestCase
     al = ApacheLookup.new(["#{@dir}/test_my_logs.log"])
     flexmock(Resolv).should_receive(:getname => "www.foo.com").at_most.times(2).at_least.times(2)
     first = al.lookup(@log_line)
-    alter_cache(al.cache_data, :time, "75.119.201.189")
+    al.cache_data = alter_cache(al.cache_data, :time, "75.119.201.189")
+    aged_cache = al.cache_data.first
     assert_equal @mock_log_line, al.lookup(@log_line)
+    assert_equal 1, al.cache_data.size
+    assert !(al.cache_data == aged_cache)
   end
 
   def test_log_file_is_safely_written_to
