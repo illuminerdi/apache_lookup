@@ -6,15 +6,13 @@ require 'flexmock/test_unit'
 class TestApacheLookup < Test::Unit::TestCase
 
   def setup
+    # is this needed to make sure that wherever I test this I'm getting the path to my test directory? hmm...
     @dir = "#{FileUtils.pwd}/test"
-    @cache = File.dirname(__FILE__) + "/../lib/lookup_cache.txt"
+    # some dummy data for testing against the sample log.
     @log_line = {:num => 1, :line => '75.119.201.189 - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     @mock_log_line = {:num => 1, :line => 'www.foo.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     # should make a local my_logs.log to work with so future runs of tests don't get clobbered by the last run
     FileUtils.cp("#{@dir}/my_logs.log", "#{@dir}/test_my_logs.log")
-
-    # should delete the cache log if it exists to not clobber future tests.
-    File.delete(@cache) if File.exists?(@cache)
   end
 
   def teardown
@@ -108,7 +106,7 @@ class TestApacheLookup < Test::Unit::TestCase
           line_bits[2] = "#{Time.now-90_000}"
         end
         line_bits.join("|")
-      else 
+      else
         l
       end
     }

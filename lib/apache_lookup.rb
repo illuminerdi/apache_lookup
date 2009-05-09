@@ -94,7 +94,7 @@ class ApacheLookup
   end
 
   private
-  
+
   def load_cache
     @cache_data = File.readlines(CACHE_FILE)
   end
@@ -109,7 +109,7 @@ class ApacheLookup
     end
     found_and_current
   end
-  
+
   def write_cache
     File.open(CACHE_FILE, "w") do |f|
       @cache_data.each do |cd|
