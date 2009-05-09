@@ -7,7 +7,7 @@ require 'time'
 require 'thread'
 
 class ApacheLookup
-  VERSION = '0.2.0'
+  VERSION = '0.2.1'
   CACHE_DECAY = 86400 # => one day, could be longer I suppose.
   CACHE_FILE = File.dirname(__FILE__) + "/lookup_cache.txt"
   attr_accessor :options, :log_data, :cache_data, :cache_mutex, :orig_file
@@ -85,8 +85,12 @@ class ApacheLookup
       found_and_current = nil
       @cache_data.each do |cd|
         bits = cd.split("|")
-        if bits[0] == ip and ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
-          found_and_current = bits[1]
+        if bits[0] == ip
+          if ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
+            found_and_current = bits[1]
+          else
+            @cache_data.reject!{|line| line[0] == bits[0]}
+          end
         end
       end
       found_and_current
