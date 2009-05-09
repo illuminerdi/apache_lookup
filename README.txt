@@ -19,10 +19,10 @@ A command line tool for changing an Apache log so that IP Addresses are replaced
 == SYNOPSIS:
 
   # Pretty simple, just point the application at your log file:
-  $ apache_lookup my_logs.log
+  $ bin/apache_lookup my_logs.log
   
-  # Or you can specify a number of threads for the process:
-  $ apache_lookup -t 100 my_logs.log
+  # Or you can specify a number of threads for the process - default is 5:
+  $ bin/apache_lookup -t 100 my_logs.log
 
 == REQUIREMENTS:
 
