@@ -10,7 +10,7 @@ class ApacheLookup
   VERSION = '0.0.1'
   CACHE_DECAY = 86400
 
-  attr_accessor :options, :log_data, :cache_file, :orig_file
+  attr_accessor :options, :log_data, :cache_data, :orig_file
 
   CACHE_FILE = File.dirname(__FILE__) + "/lookup_cache.txt"
 
@@ -32,6 +32,8 @@ class ApacheLookup
       end
     end.parse!(args)
     @log_data = Queue.new
+    FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
+    load_cache
     load_log args.shift
   end
 
@@ -44,7 +46,7 @@ class ApacheLookup
 
   def lookup log_line={}
     log_bits = log_line[:line].split(" - - ")
-    dns = get_cache(log_bits[0].strip)
+    dns = check_cache(log_bits[0].strip)
     if !dns
       begin
         timeout(2){
@@ -53,12 +55,7 @@ class ApacheLookup
       rescue Timeout::Error, Resolv::ResolvError
         dns = log_bits[0]
       end
-      FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
-      cf = File.open(CACHE_FILE, "r+")
-      to_write = "#{log_bits[0].strip}|#{dns}|#{Time.now}"
-      cf.readlines
-      cf.puts(to_write)
-      cf.close
+      @cache_data << "#{log_bits[0].strip}|#{dns}|#{Time.now}"
     end
     log_bits[0] = "#{dns}"
     {:num => log_line[:num], :line => log_bits.join(" - - ")}
@@ -70,21 +67,15 @@ class ApacheLookup
     @options[:threads].times do |thread|
       consumers << Thread.new do
         until(@log_data.empty?)
-          resolved << lookup(@log_data.shift) #{:num => data[:num], :line => lookup(data[:line])}
+          resolved << lookup(@log_data.shift)
         end
       end
     end
     consumers.each{|c| c.join}
     @log_data = resolved
   end
-  
-  def resolve_old
-    @log_data.map!{|line|
-      lookup(line)
-    }
-  end
 
-  def write
+  def write(reload=true)
     FileUtils.cp(@orig_file, "#{@orig_file}.orig")
     @log_data.sort!{|a,b| a[:num].to_i <=> b[:num].to_i}
     File.open(@orig_file, "w") {|file|
@@ -92,28 +83,39 @@ class ApacheLookup
         file.puts(data[:line])
       }
     }
+    write_cache
+    load_cache if reload
   end
 
   def self.run args=[]
     al = ApacheLookup.new(args)
     al.resolve
-    al.write
+    al.write(false)
   end
 
   private
+  
+  def load_cache
+    @cache_data = File.readlines(CACHE_FILE)
+  end
 
-  def get_cache(ip)
+  def check_cache(ip)
     found_and_current = false
-    return found_and_current if !File.exists?(CACHE_FILE)
-    File.open(CACHE_FILE, "r") do |file|
-      file.each do |line|
-        bits = line.split("|")
-        if bits[0] == ip and ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
-          found_and_current = bits[1]
-        end
+    @cache_data.each do |cd|
+      bits = cd.split("|")
+      if bits[0] == ip and ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
+        found_and_current = bits[1]
       end
     end
     found_and_current
+  end
+  
+  def write_cache
+    File.open(CACHE_FILE, "w") do |f|
+      @cache_data.each do |cd|
+        f.puts(cd)
+      end
+    end
   end
 end
 class ApacheLookupError < Exception; end

@@ -54,7 +54,7 @@ class TestApacheLookup < Test::Unit::TestCase
     al = ApacheLookup.new(["#{@dir}/test_my_logs.log"])
     flexmock(Resolv).should_receive(:getname => "www.foo.com").at_most.once
     first = al.lookup(@log_line)
-    alter_cache(ApacheLookup::CACHE_FILE, :dns, "75.119.201.189")
+    al.cache_data = alter_cache(al.cache_data, :dns, "75.119.201.189")
     second = al.lookup(@log_line)
     expected = {:num => 1, :line => 'www.bar.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406'}
     assert_equal expected, second
@@ -65,7 +65,7 @@ class TestApacheLookup < Test::Unit::TestCase
     al = ApacheLookup.new(["#{@dir}/test_my_logs.log"])
     flexmock(Resolv).should_receive(:getname => "www.foo.com").at_most.times(2).at_least.times(2)
     first = al.lookup(@log_line)
-    alter_cache(@cache, :time, "75.119.201.189")
+    alter_cache(al.cache_data, :time, "75.119.201.189")
     assert_equal @mock_log_line, al.lookup(@log_line)
   end
 
@@ -99,9 +99,8 @@ class TestApacheLookup < Test::Unit::TestCase
     end
   end
 
-  def alter_cache(cache_file, value, lookup)
-    cf = File.readlines(cache_file)
-    cf = cf.map {|l|
+  def alter_cache(cache_data, value, lookup)
+    cache_data = cache_data.map {|l|
       if l =~ /#{lookup}/
         line_bits = l.split("|")
         line_bits[1] = "www.bar.com"
@@ -113,10 +112,5 @@ class TestApacheLookup < Test::Unit::TestCase
         l
       end
     }
-    File.open(cache_file, "w") do |file|
-      cf.each do |line|
-        file.write(line)
-      end
-    end
   end
 end
