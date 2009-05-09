@@ -2,4 +2,22 @@
 
 $: << 'lib'
 require 'apache_lookup'
-ApacheLookup.run(ARGV)
+
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "Usage: apache_lookup [-t] NUM_THREADS log_file.log"
+
+  opts.separator ""
+  opts.separator "Specific options:"
+
+  opts.on("-t NUM_THREADS", "Maximum number of threads to use for parsing") do |t|
+    options[:threads] = t.to_i if t.to_i > 0
+  end
+  opts.on("-h", "This information") do |h|
+    puts opts
+    exit 0
+  end
+end.parse!(ARGV)
+al = ApacheLookup.new(ARGV)
+al.resolve
+al.write(false)

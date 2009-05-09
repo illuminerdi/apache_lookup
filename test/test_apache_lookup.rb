@@ -34,8 +34,9 @@ class TestApacheLookup < Test::Unit::TestCase
 
   def test_handles_bad_threadcount_value
     # "for when a user specifies a number of threads, but does so badly: 'foo'"
-    al = ApacheLookup.new(["-t", "foo", "#{@dir}/test_my_logs.log"])
-    assert_equal 5, al.options[:threads]
+    assert_raise ApacheLookupError do
+      al = ApacheLookup.new(["#{@dir}/test_my_logs.log"], {:threads => "foo"})
+    end
   end
 
   def test_resolves_domain_name
@@ -81,7 +82,7 @@ class TestApacheLookup < Test::Unit::TestCase
 
   def test_log_order_is_maintained
     #flunk "make sure that the order (the date/time stamp) is still in ascending order, or maybe test to make sure it still matches what's in the original file"
-    al = ApacheLookup.new(["-t","2","#{@dir}/test_my_logs.log"])
+    al = ApacheLookup.new(["#{@dir}/test_my_logs.log"], {:threads => 2})
     flexmock(Resolv).should_receive(:getname => "www.foo.com")
     al.resolve
     al.write

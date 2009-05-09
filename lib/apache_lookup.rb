@@ -7,31 +7,16 @@ require 'time'
 require 'thread'
 
 class ApacheLookup
-  VERSION = '0.0.1'
-  CACHE_DECAY = 86400
-
-  attr_accessor :options, :log_data, :cache_data, :orig_file
-
+  VERSION = '0.2.0'
+  CACHE_DECAY = 86400 # => one day, could be longer I suppose.
   CACHE_FILE = File.dirname(__FILE__) + "/lookup_cache.txt"
+  attr_accessor :options, :log_data, :cache_data, :cache_mutex, :orig_file
 
-  def initialize(args=[])
-    self.options = {:threads => 5}
-
-    OptionParser.new do |opts|
-      opts.banner = "Usage: apache_lookup [-t] NUM_THREADS log_file.log"
-
-      opts.separator ""
-      opts.separator "Specific options:"
-
-      opts.on("-t NUM_THREADS", "Maximum number of threads to use for parsing") do |t|
-        self.options[:threads] = t.to_i if t.to_i > 0
-      end
-      opts.on("-h", "This information") do |h|
-        puts opts
-        exit 0
-      end
-    end.parse!(args)
+  def initialize(args=[], options=nil)
+    self.options = options || {:threads => 5}
+    raise ApacheLookupError, "Threads value is invalid" unless self.options[:threads].class == Fixnum
     @log_data = Queue.new
+    @cache_mutex = Mutex.new
     FileUtils.touch CACHE_FILE if !File.exists?(CACHE_FILE)
     load_cache
     load_log args.shift
@@ -41,7 +26,7 @@ class ApacheLookup
     raise ApacheLookupError, "No log file supplied" if(file.nil? or file == "")
     @orig_file = file
     f = File.new(file)
-    f.each {|line| @log_data << {:line => line.chomp, :num => f.lineno-1}}
+    f.each {|line| @log_data << {:line => line.chomp, :num => f.lineno}}
   end
 
   def lookup log_line={}
@@ -49,13 +34,15 @@ class ApacheLookup
     dns = check_cache(log_bits[0].strip)
     if !dns
       begin
-        timeout(2){
+        timeout(0.5){
           dns = Resolv.getname(log_bits[0].strip)
+          @cache_mutex.synchronize do
+            @cache_data << "#{log_bits[0].strip}|#{dns}|#{Time.now}"
+          end
         }
       rescue Timeout::Error, Resolv::ResolvError
         dns = log_bits[0]
       end
-      @cache_data << "#{log_bits[0].strip}|#{dns}|#{Time.now}"
     end
     log_bits[0] = "#{dns}"
     {:num => log_line[:num], :line => log_bits.join(" - - ")}
@@ -87,12 +74,6 @@ class ApacheLookup
     load_cache if reload
   end
 
-  def self.run args=[]
-    al = ApacheLookup.new(args)
-    al.resolve
-    al.write(false)
-  end
-
   private
 
   def load_cache
@@ -100,14 +81,16 @@ class ApacheLookup
   end
 
   def check_cache(ip)
-    found_and_current = false
-    @cache_data.each do |cd|
-      bits = cd.split("|")
-      if bits[0] == ip and ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
-        found_and_current = bits[1]
+    @cache_mutex.synchronize do
+      found_and_current = nil
+      @cache_data.each do |cd|
+        bits = cd.split("|")
+        if bits[0] == ip and ((Time.now - Time.parse(bits[2])) < CACHE_DECAY)
+          found_and_current = bits[1]
+        end
       end
+      found_and_current
     end
-    found_and_current
   end
 
   def write_cache
